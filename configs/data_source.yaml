@@ -1,0 +1,21 @@
+# 数据源配置
+default_provider: sample   # sample | akshare | tushare
+
+akshare:
+  enabled: false
+  request_sleep_sec: 0.3
+
+tushare:
+  enabled: false
+  token_env: TUSHARE_TOKEN
+  request_sleep_sec: 0.35      # 每次 API 调用后固定 sleep，平滑限频
+  list_status: "L,D,P"         # 上市+退市+暂停，全样本消除幸存者偏差
+  adjust: null                 # null 不复权 | qfq 前复权（价格类因子建议 qfq）
+
+calendar:
+  market: SSE     # 上交所交易日历
+
+universe:
+  exclude_st: true
+  exclude_suspended: true
+  min_listed_days: 60   # 上市新股过滤

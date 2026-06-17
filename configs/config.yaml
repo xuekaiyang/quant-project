@@ -1,0 +1,19 @@
+# 全局配置
+project_name: quant-factor-lab
+
+paths:
+  root: .
+  data_root: data
+  raw: data/raw
+  normalized: data/normalized
+  factor: data/factor
+  label: data/label
+  evaluation: data/evaluation
+
+  daily_bar: data/normalized/daily_bar.parquet
+
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)-7s | %(name)s | %(message)s"
+
+random_seed: 42

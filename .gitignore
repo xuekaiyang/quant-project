@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# 测试 / 缓存
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 环境变量与密钥（务必不要提交真实 .env）
+.env
+.env.local
+*.key
+*.pem
+
+# 数据产物（体积大、可由脚本重建，不入库）
+data/raw/
+data/normalized/
+data/factor/
+data/label/
+data/evaluation/
+*.parquet
+
+# 无关项目 / 临时数据（误放在本目录，不属于本项目）
+glm-coding/
+slonks_full_activity.json
+
+# 系统 / 编辑器
+.DS_Store
+.idea/
+.vscode/
+*.swp

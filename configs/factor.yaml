@@ -1,0 +1,16 @@
+# 因子计算配置
+output_format: long       # long | wide
+
+factors:
+  - ret_5d
+  - ret_20d
+  - ret_60d
+  - reverse_1d
+  - reverse_5d
+  - volatility_20d
+  - volatility_60d
+  - volume_mean_20d
+  - amount_mean_20d
+  - close_to_ma20
+  - close_to_ma60
+  - log_market_cap

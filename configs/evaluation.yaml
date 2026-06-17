@@ -1,0 +1,23 @@
+# 评价配置
+default_horizon: 5
+default_quantiles: 5
+default_preprocess:
+  - winsorize_quantile
+  - zscore
+
+winsorize:
+  method: quantile        # quantile | mad
+  lower: 0.01
+  upper: 0.99
+  mad_n: 5.0
+
+neutralize:
+  enabled: false
+  by_industry: true
+  by_log_market_cap: true
+
+portfolio:
+  weighting: equal        # equal | factor_weighted
+  trading_cost_bps: 0.0   # 单边成本（基点），先置 0
+
+annualization_factor: 252
