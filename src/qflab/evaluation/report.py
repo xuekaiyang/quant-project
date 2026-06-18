@@ -28,7 +28,8 @@ from ..visualization.plots import (
     turnover_chart,
 )
 from .ic import compute_ic_full, merge_factor_label
-from .portfolio import cumulative_nav, portfolio_summary
+from .filters import filter_tradeable
+from .portfolio import apply_trading_cost, cumulative_nav, portfolio_summary, to_non_overlapping
 from .quantile import (
     assign_quantiles,
     long_short_return,
@@ -49,6 +50,11 @@ class EvaluationConfig:
     n_quantiles: int = 5
     preprocess: list[str] = field(default_factory=list)
     annualization_factor: int = 252
+    # 防过拟合纪律（默认开启正确口径）
+    trading_cost_bps: float = 0.0       # 单边交易成本（基点），按换手扣减
+    exclude_suspended: bool = True      # 建仓日停牌剔除
+    exclude_st: bool = True             # ST 剔除
+    min_listed_days: int = 0            # 上市天数过滤（需 list_date 字段，默认关）
 
 
 @dataclass
@@ -94,14 +100,35 @@ def evaluate_factor(
     label_df = compute_forward_return(daily_bar, cfg.horizon)
     label_df = _filter_dates(label_df, cfg.start_date, cfg.end_date)
 
+    # IC 用全样本（信息系数本身不受可交易性影响，反映因子预测力）
     ic_pack = compute_ic_full(factor_df, label_df)
 
     merged = merge_factor_label(factor_df, label_df)
+    # 可交易过滤：建仓日停牌/ST/上市不足天数的股票不纳入组合
+    merged = filter_tradeable(
+        merged,
+        daily_bar,
+        exclude_suspended=cfg.exclude_suspended,
+        exclude_st=cfg.exclude_st,
+        min_listed_days=cfg.min_listed_days,
+    )
+
     qa = assign_quantiles(merged, n_quantiles=cfg.n_quantiles)
     qret = quantile_returns(qa, n_quantiles=cfg.n_quantiles)
-    ls_ret = long_short_return(qret, n_quantiles=cfg.n_quantiles)
-    nav = cumulative_nav(ls_ret)
-    tov = compute_turnover(qa, n_quantiles=cfg.n_quantiles)
+    ls_ret_daily = long_short_return(qret, n_quantiles=cfg.n_quantiles)
+
+    # 非重叠调仓日程：每 horizon 个交易日取一个建仓点，避免重叠窗口重复计入收益
+    ls_ret = to_non_overlapping(ls_ret_daily, cfg.horizon)
+    rebalance_dates = ls_ret.index
+
+    # 换手率在调仓日程上计算（而非逐日），与持有期口径一致
+    qa_rebal = qa[pd.to_datetime(qa["trade_date"]).isin(rebalance_dates)]
+    tov = compute_turnover(qa_rebal, n_quantiles=cfg.n_quantiles)
+    turnover_both = (tov["turnover_top"] + tov["turnover_bottom"]) if not tov.empty else pd.Series(dtype=float)
+
+    # 扣交易成本（单边 bps × 两腿换手）
+    ls_ret_net = apply_trading_cost(ls_ret, turnover_both, cfg.trading_cost_bps)
+    nav = cumulative_nav(ls_ret_net)
 
     summary = {
         "factor_name": cfg.factor_name,
@@ -110,12 +137,23 @@ def evaluate_factor(
         "end_date": cfg.end_date,
         "n_quantiles": cfg.n_quantiles,
         "preprocess": list(cfg.preprocess),
+        "trading_cost_bps": cfg.trading_cost_bps,
+        "filters": {
+            "exclude_suspended": cfg.exclude_suspended,
+            "exclude_st": cfg.exclude_st,
+            "min_listed_days": cfg.min_listed_days,
+        },
         "ic": {
             "pearson": ic_pack["summary_pearson"],
             "rank": ic_pack["summary_rank"],
         },
         "quantile": quantile_summary(qret, n_quantiles=cfg.n_quantiles),
-        "long_short_portfolio": portfolio_summary(ls_ret, periods_per_year=cfg.annualization_factor),
+        "long_short_portfolio": portfolio_summary(
+            ls_ret_net,
+            periods_per_year=cfg.annualization_factor,
+            horizon=cfg.horizon,
+            already_non_overlapping=True,
+        ),
         "turnover": {
             "top_mean": float(tov["turnover_top"].mean()) if not tov.empty else float("nan"),
             "bottom_mean": float(tov["turnover_bottom"].mean()) if not tov.empty else float("nan"),
@@ -129,7 +167,7 @@ def evaluate_factor(
         ic_pearson=ic_pack["ic_pearson"],
         ic_rank=ic_pack["ic_rank"],
         quantile_returns=qret,
-        long_short_returns=ls_ret,
+        long_short_returns=ls_ret_net,
         nav=nav,
         turnover=tov,
     )

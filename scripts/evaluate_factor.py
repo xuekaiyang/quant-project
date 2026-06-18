@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from qflab.evaluation.report import EvaluationConfig, evaluate_factor, save_report
+from qflab.utils.config import load_config
 from qflab.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,9 +24,17 @@ def main() -> None:
         default="winsorize_quantile,zscore",
         help="comma list: winsorize_quantile|winsorize_mad|zscore|neutralize",
     )
+    p.add_argument("--cost-bps", type=float, default=None, help="单边交易成本(基点)，默认读配置")
+    p.add_argument("--no-filter", action="store_true", help="关闭可交易过滤(停牌/ST)")
+    p.add_argument("--min-listed-days", type=int, default=0, help="上市天数过滤(需 list_date 字段)")
     args = p.parse_args()
 
     steps = [s for s in args.preprocess.split(",") if s.strip()] if args.preprocess else []
+
+    eval_cfg_yaml = load_config().evaluation
+    default_cost = float(eval_cfg_yaml.get("portfolio", {}).get("trading_cost_bps", 0.0))
+    cost_bps = args.cost_bps if args.cost_bps is not None else default_cost
+
     cfg = EvaluationConfig(
         factor_name=args.factor,
         horizon=args.horizon,
@@ -33,6 +42,10 @@ def main() -> None:
         end_date=args.end,
         n_quantiles=args.quantiles,
         preprocess=steps,
+        trading_cost_bps=cost_bps,
+        exclude_suspended=not args.no_filter,
+        exclude_st=not args.no_filter,
+        min_listed_days=args.min_listed_days,
     )
 
     res = evaluate_factor(cfg)
