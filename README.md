@@ -176,20 +176,55 @@ python scripts/evaluate_factor.py --factor high_low_spread_20d --horizon 5
 
 ---
 
-## 接入真实数据源
+## 协作者快速上手
 
-骨架已留好：
+```bash
+# 1) clone
+git clone https://github.com/xuekaiyang/quant-project.git
+cd quant-project
 
-- `src/qflab/data/akshare_provider.py`：`AkshareProvider`
-- `src/qflab/data/tushare_provider.py`：`TushareProvider`
+# 2) 装依赖（含真实数据源 + 开发工具）
+python -m venv .venv && source .venv/bin/activate
+pip install -e '.[data,dev]'
 
-下一步：
+# 3) 配置 Tushare token（每人用自己的，.env 不进仓库）
+cp .env.example .env
+# 编辑 .env，填入 TUSHARE_TOKEN=你的token
 
-1. 实现 `get_stock_list / get_daily_bar / get_market_cap / get_industry`，输出列名映射到 `REQUIRED_COLUMNS / OPTIONAL_COLUMNS`。
-2. 在 provider 内部统一调用 `normalize_daily_bar` 落库。
-3. `python scripts/update_daily_data.py --provider tushare --start 2023-01-01 --end 2024-12-31` 即可。
+# 4) 跑测试确认环境 OK（不打网络）
+python -m pytest -q          # 应 20 passed
 
-> Tushare 需要在 `.env` 中设置 `TUSHARE_TOKEN`。Akshare 接口经常变动，请以最新文档为准。
+# 5) 拉一小段真实数据验证管线
+python scripts/update_daily_data.py --provider tushare --start 20240101 --end 20240131
+```
+
+> `data/`（行情/因子/评价产物）和 `.env` 都已在 `.gitignore` 中，不会进仓库。
+> 每位协作者各自拉数据到本地，需要自己的 Tushare token。
+
+---
+
+## 接入真实数据源（Tushare 已实现）
+
+`TushareProvider` 已完整实现，按交易日全市场拉取，消除幸存者偏差：
+
+```bash
+# 拉取（自动断点续传：已落库的交易日会跳过）
+python scripts/update_daily_data.py --provider tushare --start 20200101 --end 20241231
+
+# 仅用已有 raw 重建 daily_bar（不重新拉网络），并应用前复权
+python scripts/update_daily_data.py --rebuild --adjust qfq
+```
+
+要点：
+
+- **退市全样本**：`stock_basic(list_status='L,D,P')` 同时拉上市+退市+暂停股，避免幸存者偏差。
+- **raw 日分区**：每个交易日落 `data/raw/daily/<YYYYMMDD>.parquet`，fetch 与 normalize 解耦，
+  天然支持断点续传；中断后重跑只补缺失日期。
+- **复权**：原始 OHLC + `adj_factor` 落库；`--adjust qfq` 输出前复权价（原始价保留到 `*_raw` 列）。
+- **限频重试**：`_call_with_retry` 指数退避，`request_sleep_sec` 在 `configs/data_source.yaml` 调整。
+
+> Tushare 需要在 `.env` 中设置 `TUSHARE_TOKEN`，并安装 `pip install -e '.[data]'`。
+> Akshare provider 仍是 TODO 骨架。
 
 ---
 

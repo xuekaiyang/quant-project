@@ -12,7 +12,7 @@ class _VolatilityND(Factor):
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         close = df.pivot(index="trade_date", columns="instrument", values="close").sort_index()
-        ret = close.pct_change()
+        ret = close.pct_change(fill_method=None)
         wide = ret.rolling(self.n, min_periods=max(5, self.n // 2)).std()
         return self.to_long(wide)
 

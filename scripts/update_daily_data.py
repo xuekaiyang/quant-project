@@ -15,9 +15,12 @@ from __future__ import annotations
 
 import argparse
 
+from dotenv import load_dotenv
+
 from qflab.data.storage import build_daily_bar_from_raw
 from qflab.utils.logger import get_logger
 
+load_dotenv()  # 从项目根 .env 读取 TUSHARE_TOKEN 等
 logger = get_logger(__name__)
 
 

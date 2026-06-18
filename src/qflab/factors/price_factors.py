@@ -20,7 +20,7 @@ class _ReturnNDays(Factor):
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         close = _wide_close(df)
-        wide = close.pct_change(self.n)
+        wide = close.pct_change(self.n, fill_method=None)
         return self.to_long(wide)
 
 
@@ -46,7 +46,7 @@ class Reverse1D(Factor):
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         close = _wide_close(df)
-        wide = -close.pct_change(1)
+        wide = -close.pct_change(1, fill_method=None)
         return self.to_long(wide)
 
 
@@ -55,7 +55,7 @@ class Reverse5D(Factor):
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         close = _wide_close(df)
-        wide = -close.pct_change(5)
+        wide = -close.pct_change(5, fill_method=None)
         return self.to_long(wide)
 
 
