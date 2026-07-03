@@ -19,6 +19,7 @@ from .quantile import (
     quantile_returns,
     quantile_summary,
 )
+from .splits import subperiod_ranges, train_test_split_dates
 from .turnover import compute_turnover
 
 __all__ = [
@@ -42,4 +43,6 @@ __all__ = [
     "compute_turnover",
     "filter_tradeable",
     "tradeable_mask",
+    "train_test_split_dates",
+    "subperiod_ranges",
 ]

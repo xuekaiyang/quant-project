@@ -60,3 +60,13 @@ def turnover_chart(turnover_df: pd.DataFrame, title: str = "Turnover") -> go.Fig
             fig.add_scatter(x=df.index, y=df[col], mode="lines", name=col, line=dict(color=color))
     fig.update_layout(title=title, xaxis_title="trade_date", yaxis_title="Turnover", height=320)
     return fig
+
+
+def subperiod_ic_bar(subperiod: dict, title: str = "Rank IC by Sub-period") -> go.Figure:
+    """子区间 Rank IC 柱状图。subperiod: {label: {'ic_rank_mean': ...}}。"""
+    labels = list(subperiod.keys())
+    vals = [subperiod[k].get("ic_rank_mean") for k in labels]
+    colors = ["#5AD8A6" if (v is not None and v >= 0) else "#E86452" for v in vals]
+    fig = go.Figure(go.Bar(x=labels, y=vals, marker_color=colors))
+    fig.update_layout(title=title, xaxis_title="sub-period", yaxis_title="Rank IC mean", height=320)
+    return fig

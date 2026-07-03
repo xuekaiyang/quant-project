@@ -27,6 +27,9 @@ def main() -> None:
     p.add_argument("--cost-bps", type=float, default=None, help="单边交易成本(基点)，默认读配置")
     p.add_argument("--no-filter", action="store_true", help="关闭可交易过滤(停牌/ST)")
     p.add_argument("--min-listed-days", type=int, default=0, help="上市天数过滤(需 list_date 字段)")
+    p.add_argument("--oos-ratio", type=float, default=0.0, help="IS/OOS 测试集占比(0=关闭)")
+    p.add_argument("--embargo", type=int, default=0, help="IS/OOS 之间额外缓冲交易日数")
+    p.add_argument("--subperiods", type=str, default=None, help="子区间: 'year' 或整数K(等分K段)")
     args = p.parse_args()
 
     steps = [s for s in args.preprocess.split(",") if s.strip()] if args.preprocess else []
@@ -46,6 +49,9 @@ def main() -> None:
         exclude_suspended=not args.no_filter,
         exclude_st=not args.no_filter,
         min_listed_days=args.min_listed_days,
+        oos_test_ratio=args.oos_ratio,
+        embargo=args.embargo,
+        subperiods=args.subperiods,
     )
 
     res = evaluate_factor(cfg)
@@ -63,6 +69,19 @@ def main() -> None:
         "L-S annual_return=%.4f sharpe=%.4f max_dd=%.4f",
         pf["annual_return"], pf["sharpe"], pf["max_drawdown"],
     )
+    if res.is_oos:
+        tr, te = res.is_oos["train"], res.is_oos["test"]
+        logger.info(
+            "IS/OOS rank IC: IS=%.4f  OOS=%.4f  (OOS sharpe=%.4f)",
+            tr["ic_rank_mean"] or float("nan"),
+            te["ic_rank_mean"] or float("nan"),
+            te["ls_sharpe"] or float("nan"),
+        )
+    if res.subperiod:
+        segs = "  ".join(
+            f"{k}:{(d['ic_rank_mean'] or float('nan')):.3f}" for k, d in res.subperiod.items()
+        )
+        logger.info("Sub-period rank IC: %s", segs)
     logger.info("Report dir: %s", out)
 
 
