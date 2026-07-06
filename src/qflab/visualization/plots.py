@@ -70,3 +70,29 @@ def subperiod_ic_bar(subperiod: dict, title: str = "Rank IC by Sub-period") -> g
     fig = go.Figure(go.Bar(x=labels, y=vals, marker_color=colors))
     fig.update_layout(title=title, xaxis_title="sub-period", yaxis_title="Rank IC mean", height=320)
     return fig
+
+
+def ic_decay_chart(decay_df: pd.DataFrame, title: str = "IC Decay") -> go.Figure:
+    """IC 衰减曲线：x=horizon, y=ic_mean（附 ICIR 次轴）。"""
+    df = decay_df.sort_values("horizon")
+    fig = go.Figure()
+    fig.add_scatter(x=df["horizon"], y=df["ic_mean"], mode="lines+markers",
+                    name="IC mean", line=dict(color="#5B8FF9"))
+    fig.add_scatter(x=df["horizon"], y=df["icir"], mode="lines+markers",
+                    name="ICIR", line=dict(color="#5AD8A6", dash="dot"), yaxis="y2")
+    fig.update_layout(
+        title=title, xaxis_title="horizon (days)", yaxis_title="IC mean",
+        yaxis2=dict(title="ICIR", overlaying="y", side="right"), height=320,
+    )
+    return fig
+
+
+def correlation_heatmap(corr: pd.DataFrame, title: str = "Factor Correlation") -> go.Figure:
+    """因子相关性热力图。"""
+    fig = go.Figure(go.Heatmap(
+        z=corr.values, x=list(corr.columns), y=list(corr.index),
+        zmin=-1, zmax=1, colorscale="RdBu", reversescale=True,
+        colorbar=dict(title="corr"),
+    ))
+    fig.update_layout(title=title, height=max(320, 24 * len(corr) + 120))
+    return fig

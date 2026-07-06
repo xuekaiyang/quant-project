@@ -22,12 +22,14 @@ from ..utils.config import load_config
 from ..utils.logger import get_logger
 from ..visualization.plots import (
     cumulative_ic_chart,
+    ic_decay_chart,
     ic_timeseries_chart,
     long_short_nav_chart,
     quantile_return_bar,
     subperiod_ic_bar,
     turnover_chart,
 )
+from .decay import ic_decay as compute_ic_decay
 from .ic import compute_ic_full, merge_factor_label
 from .filters import filter_tradeable
 from .portfolio import apply_trading_cost, cumulative_nav, portfolio_summary, to_non_overlapping
@@ -61,6 +63,7 @@ class EvaluationConfig:
     oos_test_ratio: float = 0.0         # >0 时启用 IS/OOS holdout，取靠后一段做 OOS
     embargo: int = 0                    # IS/OOS 之间额外缓冲交易日数（purge 已含 horizon）
     subperiods: str | None = None       # "year" 或整数字符串（等分K段）；None 关闭
+    decay_horizons: list[int] | None = None  # 非空时计算多 horizon IC 衰减
 
 
 @dataclass
@@ -75,6 +78,7 @@ class EvaluationResult:
     turnover: pd.DataFrame
     is_oos: dict | None = None          # {'train': {...}, 'test': {...}}
     subperiod: dict | None = None       # {label: {...}} 各子区间精简指标
+    ic_decay: pd.DataFrame | None = None  # horizon/ic_mean/icir/... 衰减表
     output_dir: Path | None = None
 
 
@@ -254,6 +258,14 @@ def evaluate_factor(
             }
         summary["subperiods"] = subperiod
 
+    # IC 衰减(多 horizon)。factor_df 已预处理，故 preprocess=None 避免重复
+    decay_df = None
+    if cfg.decay_horizons:
+        decay_df = compute_ic_decay(
+            factor_df, daily_bar, horizons=cfg.decay_horizons, preprocess=None
+        )
+        summary["ic_decay"] = decay_df.to_dict(orient="records")
+
     return EvaluationResult(
         config=cfg,
         summary=summary,
@@ -265,6 +277,7 @@ def evaluate_factor(
         turnover=full["tov"],
         is_oos=is_oos,
         subperiod=subperiod,
+        ic_decay=decay_df,
     )
 
 
@@ -309,6 +322,8 @@ def _render_html(result: EvaluationResult, path: Path) -> None:
     ]
     if result.subperiod:
         figs.append(subperiod_ic_bar(result.subperiod, "Rank IC by Sub-period"))
+    if result.ic_decay is not None and not result.ic_decay.empty:
+        figs.append(ic_decay_chart(result.ic_decay, "IC Decay"))
     body = "\n".join(_fig_to_div(f) for f in figs)
     tbl = _summary_table_html(s)
     is_oos_html = _is_oos_table_html(result.is_oos) if result.is_oos else ""

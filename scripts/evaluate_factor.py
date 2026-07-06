@@ -30,7 +30,12 @@ def main() -> None:
     p.add_argument("--oos-ratio", type=float, default=0.0, help="IS/OOS 测试集占比(0=关闭)")
     p.add_argument("--embargo", type=int, default=0, help="IS/OOS 之间额外缓冲交易日数")
     p.add_argument("--subperiods", type=str, default=None, help="子区间: 'year' 或整数K(等分K段)")
+    p.add_argument("--decay-horizons", type=str, default=None, help="IC衰减 horizon 列表,如 1,3,5,10,20")
     args = p.parse_args()
+
+    decay_hs = None
+    if args.decay_horizons:
+        decay_hs = [int(x) for x in args.decay_horizons.split(",") if x.strip()]
 
     steps = [s for s in args.preprocess.split(",") if s.strip()] if args.preprocess else []
 
@@ -52,6 +57,7 @@ def main() -> None:
         oos_test_ratio=args.oos_ratio,
         embargo=args.embargo,
         subperiods=args.subperiods,
+        decay_horizons=decay_hs,
     )
 
     res = evaluate_factor(cfg)
@@ -82,6 +88,11 @@ def main() -> None:
             f"{k}:{(d['ic_rank_mean'] or float('nan')):.3f}" for k, d in res.subperiod.items()
         )
         logger.info("Sub-period rank IC: %s", segs)
+    if res.ic_decay is not None and not res.ic_decay.empty:
+        segs = "  ".join(
+            f"h{int(r.horizon)}:{r.ic_mean:.3f}" for r in res.ic_decay.itertuples()
+        )
+        logger.info("IC decay: %s", segs)
     logger.info("Report dir: %s", out)
 
 

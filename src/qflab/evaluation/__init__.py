@@ -1,5 +1,7 @@
 """qflab.evaluation 入口。"""
 
+from .correlation import factor_correlation, redundant_pairs
+from .decay import ic_decay
 from .filters import filter_tradeable, tradeable_mask
 from .ic import compute_daily_ic, compute_ic_full, ic_summary, merge_factor_label
 from .portfolio import (
@@ -45,4 +47,7 @@ __all__ = [
     "tradeable_mask",
     "train_test_split_dates",
     "subperiod_ranges",
+    "ic_decay",
+    "factor_correlation",
+    "redundant_pairs",
 ]
