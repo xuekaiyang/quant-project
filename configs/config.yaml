@@ -11,6 +11,7 @@ paths:
   evaluation: data/evaluation
 
   daily_bar: data/normalized/daily_bar.parquet
+  pool_db: data/pool/factors.db
 
 logging:
   level: INFO

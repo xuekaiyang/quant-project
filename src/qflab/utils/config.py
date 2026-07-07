@@ -33,10 +33,11 @@ class Paths:
     label: Path
     evaluation: Path
     daily_bar: Path
+    pool_db: Path
 
     def ensure(self) -> None:
         """确保数据目录存在。"""
-        for p in [self.raw, self.normalized, self.factor, self.label, self.evaluation]:
+        for p in [self.raw, self.normalized, self.factor, self.label, self.evaluation, self.pool_db.parent]:
             p.mkdir(parents=True, exist_ok=True)
 
 
@@ -78,5 +79,6 @@ def load_config() -> Config:
         label=_resolve(root, paths_dict.get("label", "data/label")),
         evaluation=_resolve(root, paths_dict.get("evaluation", "data/evaluation")),
         daily_bar=_resolve(root, paths_dict.get("daily_bar", "data/normalized/daily_bar.parquet")),
+        pool_db=_resolve(root, paths_dict.get("pool_db", "data/pool/factors.db")),
     )
     return Config(raw=main, paths=paths, evaluation=eval_cfg, data_source=ds_cfg, factor=fac_cfg)
